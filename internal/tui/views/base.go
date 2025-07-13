@@ -1,8 +1,8 @@
 package views
 
 import (
-	"pantui/internal/hls"
-	"pantui/internal/tui/components"
+	"github.com/soldiermoth/pantui/internal/hls"
+	"github.com/soldiermoth/pantui/internal/tui/components"
 
 	"github.com/gdamore/tcell/v2"
 	"github.com/rivo/tview"

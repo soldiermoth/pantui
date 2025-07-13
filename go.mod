@@ -1,4 +1,4 @@
-module pantui
+module github.com/soldiermoth/pantui
 
 go 1.21
 

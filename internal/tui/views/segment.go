@@ -8,7 +8,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
-	"pantui/internal/hls"
+	"github.com/soldiermoth/pantui/internal/hls"
 	"runtime"
 	"strconv"
 	"strings"

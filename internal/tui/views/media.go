@@ -3,7 +3,7 @@ package views
 import (
 	"fmt"
 	"os/exec"
-	"pantui/internal/hls"
+	"github.com/soldiermoth/pantui/internal/hls"
 	"strings"
 	"time"
 

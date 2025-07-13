@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
-	"pantui/cmd"
+	"github.com/soldiermoth/pantui/cmd"
 )
 
 // Version information - set by GoReleaser

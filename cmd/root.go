@@ -2,7 +2,7 @@ package cmd
 
 import (
 	"fmt"
-	"pantui/internal/tui"
+	"github.com/soldiermoth/pantui/internal/tui"
 
 	"github.com/spf13/cobra"
 )

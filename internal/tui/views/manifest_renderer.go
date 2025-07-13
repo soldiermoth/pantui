@@ -2,8 +2,8 @@ package views
 
 import (
 	"fmt"
-	"pantui/internal/hls"
-	"pantui/internal/tui/colors"
+	"github.com/soldiermoth/pantui/internal/hls"
+	"github.com/soldiermoth/pantui/internal/tui/colors"
 	"strings"
 
 	"github.com/gdamore/tcell/v2"

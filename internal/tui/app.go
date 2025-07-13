@@ -2,9 +2,9 @@ package tui
 
 import (
 	"fmt"
-	"pantui/internal/hls"
-	"pantui/internal/tui/components"
-	"pantui/internal/tui/views"
+	"github.com/soldiermoth/pantui/internal/hls"
+	"github.com/soldiermoth/pantui/internal/tui/components"
+	"github.com/soldiermoth/pantui/internal/tui/views"
 	"strings"
 	"time"
 
