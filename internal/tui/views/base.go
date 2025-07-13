@@ -44,6 +44,9 @@ type ViewState struct {
 // NavigationCallback is called when user wants to navigate to a resource
 type NavigationCallback func(uri string)
 
+// SegmentNavigationCallback is called when user wants to navigate to a segment
+type SegmentNavigationCallback func(segment *hls.Segment)
+
 // StatusCallback is called to update the status bar
 type StatusCallback func(status string)
 
@@ -58,19 +61,21 @@ type View interface {
 	GetKeyBindings() []components.KeyBinding
 	HandleKey(event *tcell.EventKey) *tcell.EventKey
 	SetNavigationCallback(callback NavigationCallback)
+	SetSegmentNavigationCallback(callback SegmentNavigationCallback)
 	SetStatusCallback(callback StatusCallback)
 	SetUpdateCallback(callback UpdateCallback)
 }
 
 // BaseView provides common functionality for all views
 type BaseView struct {
-	primitive          tview.Primitive
-	viewType           ViewType
-	manifest           *hls.Manifest
-	keyBindings        []components.KeyBinding
-	navigationCallback NavigationCallback
-	statusCallback     StatusCallback
-	updateCallback     UpdateCallback
+	primitive                 tview.Primitive
+	viewType                  ViewType
+	manifest                  *hls.Manifest
+	keyBindings               []components.KeyBinding
+	navigationCallback        NavigationCallback
+	segmentNavigationCallback SegmentNavigationCallback
+	statusCallback            StatusCallback
+	updateCallback            UpdateCallback
 }
 
 // NewBaseView creates a new base view
@@ -119,6 +124,11 @@ func (bv *BaseView) AddKeyBinding(key, description string) {
 // SetNavigationCallback sets the navigation callback
 func (bv *BaseView) SetNavigationCallback(callback NavigationCallback) {
 	bv.navigationCallback = callback
+}
+
+// SetSegmentNavigationCallback sets the segment navigation callback
+func (bv *BaseView) SetSegmentNavigationCallback(callback SegmentNavigationCallback) {
+	bv.segmentNavigationCallback = callback
 }
 
 // SetStatusCallback sets the status callback

@@ -89,3 +89,29 @@ The segment inspection feature uses `ffprobe` to analyze media segments and disp
 - File size and duration
 - Color space and pixel format information
 - Encoding profiles and levels
+
+### Init Fragment Support
+
+When segments reference init fragments via `#EXT-X-MAP:URI=`, the analysis automatically:
+- Detects the init fragment URI
+- Resolves relative URLs properly
+- Creates temporary concat file listing both init fragment and segment
+- Uses ffprobe's concat demuxer with HTTPS support
+- Includes protocol whitelist for network URLs: `concat,file,http,https,tcp,tls`
+- Cleans up temporary files automatically
+- Falls back to segment-only analysis if concat fails
+- Displays detailed error output (stdout/stderr) when ffprobe fails
+
+The temporary concat file format follows FFmpeg standards:
+```
+file 'https://cdn.example.com/init.m4s'
+file 'https://cdn.example.com/segment.m4s'
+```
+
+### Error Handling
+
+FFProbe errors now include the complete command output to help with debugging:
+- Network errors (timeouts, DNS failures)
+- Format errors (unsupported codecs, corrupted files)
+- Init fragment concatenation failures
+- URL resolution issues

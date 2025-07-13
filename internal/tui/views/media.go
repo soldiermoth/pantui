@@ -88,14 +88,18 @@ func (mv *MediaView) setupInputCapture() {
 		case tcell.KeyEnter:
 			// Find URI on current line and navigate to it
 			if uri, exists := mv.navigableItems[mv.currentLine]; exists {
-				if mv.navigationCallback != nil {
-					// Find the segment by URI
-					for _, segment := range mv.manifest.Segments {
-						if segment.URI == uri {
-							mv.navigationCallback(&segment)
-							break
+				// Find the segment by URI
+				for _, segment := range mv.manifest.Segments {
+					if segment.URI == uri {
+						if mv.segmentNavigationCallback != nil {
+							mv.segmentNavigationCallback(&segment)
 						}
+						return nil
 					}
+				}
+				// If no segment found, fall back to regular navigation
+				if mv.navigationCallback != nil {
+					mv.navigationCallback(uri)
 				}
 			}
 			return nil

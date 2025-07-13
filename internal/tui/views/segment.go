@@ -3,8 +3,10 @@ package views
 import (
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"net/url"
+	"os"
 	"os/exec"
 	"pantui/internal/hls"
 	"runtime"
@@ -361,7 +363,7 @@ func (sv *SegmentView) inspectSegment() {
 		if err != nil {
 			if sv.updateCallback != nil {
 				sv.updateCallback(func() {
-					sv.showMessage(fmt.Sprintf("FFProbe failed: %v", err))
+					sv.showFFProbeError(err)
 				})
 			}
 			return
@@ -382,11 +384,21 @@ func (sv *SegmentView) inspectSegment() {
 func (sv *SegmentView) runFFProbeWithInit(segmentURL string) (*FFProbeOutput, error) {
 	// Check if we have an init fragment
 	if sv.segment.Map != nil && sv.segment.Map.URI != "" {
-		// We have an init fragment, use ffprobe's concat protocol
+		// We have an init fragment, create a temporary concat file
 		initURL := sv.resolveInitFragmentURL(sv.segment.Map.URI)
 		
-		// Use ffprobe's concat demuxer to analyze init + segment
-		concatInput := fmt.Sprintf("concat:%s|%s", initURL, segmentURL)
+		// Create temporary concat file
+		concatFile, err := sv.createConcatFile(initURL, segmentURL)
+		if err != nil {
+			// If we can't create concat file, fall back to segment-only analysis
+			concatError := fmt.Errorf("Failed to create concat file: %v", err)
+			result, fallbackErr := sv.runFFProbe(segmentURL)
+			if fallbackErr != nil {
+				return nil, fmt.Errorf("%v\n\nFallback segment-only analysis also failed: %v", concatError, fallbackErr)
+			}
+			return result, nil
+		}
+		defer os.Remove(concatFile) // Clean up temp file
 		
 		cmd := exec.Command("ffprobe",
 			"-v", "quiet",
@@ -395,19 +407,37 @@ func (sv *SegmentView) runFFProbeWithInit(segmentURL string) (*FFProbeOutput, er
 			"-show_streams",
 			"-f", "concat",
 			"-safe", "0",
-			concatInput)
+			"-protocol_whitelist", "concat,file,http,https,tcp,tls",
+			concatFile)
 
-		output, err := cmd.Output()
+		output, err := cmd.CombinedOutput()
 		if err != nil {
-			// If concat fails, fall back to analyzing just the segment
-			return sv.runFFProbe(segmentURL)
+			// Create detailed error message with full command context
+			concatError := fmt.Errorf("Init fragment concatenation failed\nCommand: ffprobe -f concat -safe 0 -protocol_whitelist concat,file,http,https,tcp,tls \"%s\"\nConcat file content:\nfile '%s'\nfile '%s'\nError: %v\nOutput: %s", 
+				concatFile, initURL, segmentURL, err, string(output))
+			
+			// Try segment-only analysis and include concat error info
+			result, fallbackErr := sv.runFFProbe(segmentURL)
+			if fallbackErr != nil {
+				return nil, fmt.Errorf("%v\n\nFallback segment-only analysis also failed: %v", concatError, fallbackErr)
+			}
+			
+			// Successful fallback - we could optionally log the concat error
+			return result, nil
 		}
 
 		var probeOutput FFProbeOutput
 		err = json.Unmarshal(output, &probeOutput)
 		if err != nil {
 			// If parsing fails, fall back to analyzing just the segment
-			return sv.runFFProbe(segmentURL)
+			parseError := fmt.Errorf("Init fragment concat succeeded but JSON parsing failed\nJSON Error: %v\nFFProbe Raw Output:\n%s", err, string(output))
+			
+			result, fallbackErr := sv.runFFProbe(segmentURL)
+			if fallbackErr != nil {
+				return nil, fmt.Errorf("%v\n\nFallback segment-only analysis also failed: %v", parseError, fallbackErr)
+			}
+			
+			return result, nil
 		}
 
 		return &probeOutput, nil
@@ -427,18 +457,41 @@ func (sv *SegmentView) runFFProbe(url string) (*FFProbeOutput, error) {
 		"-show_streams",
 		url)
 
-	output, err := cmd.Output()
+	// Use CombinedOutput to capture both stdout and stderr
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, fmt.Errorf("ffprobe execution failed: %v", err)
+		return nil, fmt.Errorf("FFProbe execution failed\nCommand: ffprobe -v quiet -print_format json -show_format -show_streams \"%s\"\nError: %v\nOutput:\n%s", url, err, string(output))
 	}
 
 	var probeOutput FFProbeOutput
 	err = json.Unmarshal(output, &probeOutput)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse ffprobe output: %v", err)
+		return nil, fmt.Errorf("FFProbe succeeded but JSON parsing failed\nJSON Error: %v\nFFProbe Raw Output:\n%s", err, string(output))
 	}
 
 	return &probeOutput, nil
+}
+
+// createConcatFile creates a temporary concat file for ffprobe
+func (sv *SegmentView) createConcatFile(initURL, segmentURL string) (string, error) {
+	// Create temporary file
+	tmpFile, err := ioutil.TempFile("", "pantui_concat_*.txt")
+	if err != nil {
+		return "", fmt.Errorf("failed to create temp file: %v", err)
+	}
+	defer tmpFile.Close()
+
+	// Write concat file format
+	// Format: https://ffmpeg.org/ffmpeg-formats.html#concat-1
+	concatContent := fmt.Sprintf("file '%s'\nfile '%s'\n", initURL, segmentURL)
+	
+	_, err = tmpFile.WriteString(concatContent)
+	if err != nil {
+		os.Remove(tmpFile.Name())
+		return "", fmt.Errorf("failed to write concat file: %v", err)
+	}
+
+	return tmpFile.Name(), nil
 }
 
 // resolveInitFragmentURL resolves the init fragment URL relative to the segment
@@ -636,4 +689,43 @@ func (sv *SegmentView) showMessage(message string) {
 	if sv.statusCallback != nil {
 		sv.statusCallback(message)
 	}
+}
+
+// showFFProbeError displays detailed ffprobe error information
+func (sv *SegmentView) showFFProbeError(err error) {
+	// Show brief message in status bar
+	if sv.statusCallback != nil {
+		sv.statusCallback("FFProbe analysis failed - see details below")
+	}
+
+	// Display full error details in the main content area
+	content := fmt.Sprintf(`[yellow]Segment Analysis Failed[white]
+
+[cyan]Original URI:[white]
+%s
+
+[cyan]Resolved URL:[white]
+%s
+
+[cyan]Segment Details:[white]
+%s
+
+[red]FFProbe Error Details:[white]
+%s
+
+[cyan]Available Actions:[white]
+• Press [green]c[white] to copy URL to clipboard
+• Press [green]o[white] to open in browser
+• Press [green]h[white] to show HTTP headers
+• Press [green]i[white] to retry inspection
+• Press [yellow]Esc[white] to go back
+
+[darkgray]Tip: Check if the segment URL is accessible and if ffprobe is installed.[white]`,
+		sv.segment.URI,
+		sv.resolvedURL,
+		sv.formatSegmentDetails(),
+		err.Error())
+
+	sv.textView.SetText(content)
+	sv.textView.SetTitle(" Segment Analysis - Error ").SetBorder(true)
 }

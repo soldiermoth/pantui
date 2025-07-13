@@ -143,7 +143,12 @@ func (a *App) showMasterManifest(manifest *hls.Manifest) {
 func (a *App) showMediaManifest(manifest *hls.Manifest) {
 	view := views.NewMediaView(manifest, a.parser)
 	view.SetNavigationCallback(func(uri string) {
-		a.navigateToSegment(uri)
+		// Create a minimal segment object for backwards compatibility
+		segment := &hls.Segment{URI: uri}
+		a.navigateToSegment(segment)
+	})
+	view.SetSegmentNavigationCallback(func(segment *hls.Segment) {
+		a.navigateToSegment(segment)
 	})
 	view.SetStatusCallback(func(status string) {
 		a.statusBar.SetStatus(status)
@@ -266,7 +271,12 @@ func (a *App) navigateBack() {
 	case views.MediaViewType:
 		view = views.NewMediaView(lastState.Manifest, a.parser)
 		view.SetNavigationCallback(func(uri string) {
-			a.navigateToSegment(uri)
+			// Create a minimal segment object for backwards compatibility
+			segment := &hls.Segment{URI: uri}
+			a.navigateToSegment(segment)
+		})
+		view.SetSegmentNavigationCallback(func(segment *hls.Segment) {
+			a.navigateToSegment(segment)
 		})
 		view.SetStatusCallback(func(status string) {
 			a.statusBar.SetStatus(status)
