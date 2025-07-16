@@ -367,18 +367,6 @@ func (a *App) hideLoadingModal() {
 	a.loadingModal = nil
 }
 
-// showErrorModal shows an error modal with the given message
-func (a *App) showErrorModal(message string) {
-	modal := tview.NewModal().
-		SetText(message).
-		SetBackgroundColor(tcell.ColorDarkRed).
-		AddButtons([]string{"Exit"}).
-		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
-			a.app.Stop()
-		})
-	
-	a.pages.AddPage("error", modal, false, true)
-}
 
 // GetApp returns the underlying tview application
 func (a *App) GetApp() *tview.Application {

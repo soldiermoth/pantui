@@ -203,7 +203,6 @@ func TestResolveURL(t *testing.T) {
 
 	// Relative URL should be resolved
 	result = parser.ResolveURL("segment.ts")
-	expected := "https://example.com/video/segment.ts"
 	if !strings.Contains(result, "segment.ts") {
 		t.Errorf("Expected resolved URL to contain 'segment.ts', got '%s'", result)
 	}

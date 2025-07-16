@@ -3,7 +3,7 @@ package views
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"net/url"
 	"os"
@@ -475,7 +475,7 @@ func (sv *SegmentView) runFFProbe(url string) (*FFProbeOutput, error) {
 // createConcatFile creates a temporary concat file for ffprobe
 func (sv *SegmentView) createConcatFile(initURL, segmentURL string) (string, error) {
 	// Create temporary file
-	tmpFile, err := ioutil.TempFile("", "pantui_concat_*.txt")
+	tmpFile, err := os.CreateTemp("", "pantui_concat_*.txt")
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %v", err)
 	}
