@@ -210,7 +210,7 @@ func TestResolveURL(t *testing.T) {
 	// Test with file path base URL
 	parser.baseURL = "/local/path"
 	result = parser.ResolveURL("segment.ts")
-	expected = "/local/path/segment.ts"
+	expected := "/local/path/segment.ts"
 	if result != expected {
 		t.Errorf("Expected resolved path '%s', got '%s'", expected, result)
 	}
